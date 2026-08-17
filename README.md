@@ -1,6 +1,6 @@
 # TBD
 
-A full stack application that leverages an AI model.
+This repository hosts a full-stack web application designed to interface with an advanced artificial intelligence model focused on medical imaging. Specifically, the machine learning pipeline is dedicated to training and deploying a model that analyzes brain scan images to identify and locate potential tumors. By providing an intuitive frontend and a robust backend API, this project aims to make the underlying tumor-detection AI accessible and easy to use for analyzing scan results.
 
 ## Team Members
 - Juan Cruz
