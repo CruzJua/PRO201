@@ -1,0 +1,107 @@
+"""CRUD repositories for the Supabase application tables."""
+
+from __future__ import annotations
+
+from typing import Any
+
+from supabase import Client
+
+from .client import create_supabase_client
+
+
+class UsersRepository:
+    def __init__(self, client: Client):
+        self.client = client
+
+    def create(self, user_id: int, name: str) -> dict[str, Any]:
+        return self.client.table("Users").insert({"user_id": user_id, "name": name}).execute().data[0]
+
+    def get(self, user_id: int) -> dict[str, Any] | None:
+        rows = self.client.table("Users").select("*").eq("user_id", user_id).limit(1).execute().data
+        return rows[0] if rows else None
+
+    def list(self) -> list[dict[str, Any]]:
+        return self.client.table("Users").select("*").order("user_id").execute().data
+
+    def update(self, user_id: int, name: str) -> dict[str, Any] | None:
+        rows = self.client.table("Users").update({"name": name}).eq("user_id", user_id).execute().data
+        return rows[0] if rows else None
+
+    def delete(self, user_id: int) -> bool:
+        return bool(self.client.table("Users").delete().eq("user_id", user_id).execute().data)
+
+
+class ImagesRepository:
+    def __init__(self, client: Client):
+        self.client = client
+
+    def create(self, image_id: int, url: str) -> dict[str, Any]:
+        return self.client.table("Images").insert({"image_id": image_id, "url": url}).execute().data[0]
+
+    def get(self, image_id: int) -> dict[str, Any] | None:
+        rows = self.client.table("Images").select("*").eq("image_id", image_id).limit(1).execute().data
+        return rows[0] if rows else None
+
+    def list(self) -> list[dict[str, Any]]:
+        return self.client.table("Images").select("*").order("image_id").execute().data
+
+    def update(self, image_id: int, url: str) -> dict[str, Any] | None:
+        rows = self.client.table("Images").update({"url": url}).eq("image_id", image_id).execute().data
+        return rows[0] if rows else None
+
+    def delete(self, image_id: int) -> bool:
+        return bool(self.client.table("Images").delete().eq("image_id", image_id).execute().data)
+
+
+class PredictionsRepository:
+    def __init__(self, client: Client):
+        self.client = client
+
+    def create(self, pred_id: int, user_id: int, image_id: int, description: str) -> dict[str, Any]:
+        return self.client.table("Prediction").insert(
+            {
+                "pred_id": pred_id,
+                "user_id": user_id,
+                "image_id": image_id,
+                "description": description,
+            }
+        ).execute().data[0]
+
+    def get(self, pred_id: int) -> dict[str, Any] | None:
+        rows = self.client.table("Prediction").select("*").eq("pred_id", pred_id).limit(1).execute().data
+        return rows[0] if rows else None
+
+    def list(self) -> list[dict[str, Any]]:
+        return self.client.table("Prediction").select("*").order("pred_id").execute().data
+
+    def update(self, pred_id: int, description: str) -> dict[str, Any] | None:
+        rows = self.client.table("Prediction").update({"description": description}).eq("pred_id", pred_id).execute().data
+        return rows[0] if rows else None
+
+    def delete(self, pred_id: int) -> bool:
+        return bool(self.client.table("Prediction").delete().eq("pred_id", pred_id).execute().data)
+
+    def list_with_user_and_image(self) -> list[dict[str, Any]]:
+        """Return predictions joined with their user name and image URL."""
+        rows = self.client.table("Prediction").select(
+            "pred_id, description, Users!inner(name), Images!inner(url)"
+        ).order("pred_id").execute().data
+        return [
+            {
+                "pred_id": row["pred_id"],
+                "name": row["Users"]["name"],
+                "url": row["Images"]["url"],
+                "description": row["description"],
+            }
+            for row in rows
+        ]
+
+
+class Database:
+    """Application-facing collection of repositories."""
+
+    def __init__(self, client: Client | None = None):
+        supabase = client or create_supabase_client()
+        self.users = UsersRepository(supabase)
+        self.images = ImagesRepository(supabase)
+        self.predictions = PredictionsRepository(supabase)
