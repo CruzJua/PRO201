@@ -1,0 +1,24 @@
+# NOTE: pipeline/models/ (cnn_model.pt, class_names.json, metrics.json, the
+# plot PNGs) is intentionally NOT ignored here and IS committed to git.
+# That's a deliberate choice, not an oversight: this model is baked into
+# the Docker image at build time (see pipeline/Dockerfile), so every clone
+# of this repo needs to already have a trained model in it -- otherwise
+# every `docker build` (or fresh teammate checkout) would need to retrain
+# from the full dataset just to get a working image. After running
+# `python train.py`, `git add pipeline/models` and commit/push the result
+# like any other source file.
+
+# The dataset (12,000+ images) is already ignored by the root .gitignore's
+# `pipeline/data` rule -- this is a REDUNDANT, belt-and-suspenders copy of
+# that same rule, scoped here in case the root rule is ever accidentally
+# edited or dropped. It should never actually be "the only thing" keeping
+# the dataset out of git; if it ever is, fix the root .gitignore too.
+data/
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Testing / Training Images
+data
