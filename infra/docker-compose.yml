@@ -1,5 +1,16 @@
-# TODO: Add your infrastructure and containerization configurations here.
-# Define the frontend, backend, and database services.
+# TODO: Add the remaining frontend/database configuration here.
+# The `model` service below serves the trained CNN from pipeline/ over
+# FastAPI, on port 8001.
+#
+# The trained weights are baked into the model image at BUILD time (see
+# pipeline/Dockerfile), not mounted in at runtime. pipeline/models/ is
+# committed to git, so the normal flow is just:
+#   1. `docker compose build model` (or `up --build`) bakes in whatever
+#      model is currently committed in pipeline/models/. No training or
+#      GPU needed on whatever machine is doing the build/run.
+#   2. Producing a NEW model instead: run `python pipeline/train.py`
+#      locally, `git add pipeline/models` + commit, THEN `docker compose
+#      build model` again to bake in the new weights.
 
 version: '3.8'
 
@@ -9,3 +20,17 @@ services:
     # ports:
     #   - "8000:8000"
     image: placeholder-backend-image
+
+  model:
+    build:
+      context: ../pipeline
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped

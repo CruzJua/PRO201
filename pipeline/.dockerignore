@@ -1,0 +1,13 @@
+# Never bake the dataset into the image -- it's huge and already git-ignored.
+data/
+
+# NOTE: models/ is intentionally NOT excluded here. The Dockerfile COPYs
+# pipeline/models/ (cnn_model.pt, class_names.json, ...) into the image at
+# build time so the trained model is baked in -- see the Dockerfile's top
+# comment for the train-then-build workflow.
+
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
