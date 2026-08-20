@@ -1,0 +1,33 @@
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-multipart==0.0.9
+pydantic==2.7.4
+
+# IMPORTANT -- this is platform-specific:
+#   - On LINUX, plain `pip install -r requirements.txt` is enough. torch's
+#     Linux wheels pull the CUDA runtime in automatically via separate
+#     nvidia-*/cuda-* pip packages, so you get GPU support for free.
+#   - On WINDOWS, torch's plain PyPI wheel is CPU-only -- it does NOT pull
+#     in those CUDA packages the way the Linux wheel does. `pip install -r
+#     requirements.txt` alone will install a CPU-only torch even on a
+#     machine with an NVIDIA GPU. Windows users need ONE extra command
+#     BEFORE (or instead of) installing this file -- see the "GPU not being
+#     used?" section in pipeline/README.md for the exact command.
+#
+# Separately: these are pinned to a recent release deliberately. Brand-new
+# GPU architectures (e.g. RTX 50-series / "Blackwell", compute capability
+# sm_120) only get CUDA kernel support in PyTorch builds released after that
+# hardware shipped -- an old torch version will detect the GPU (`Using
+# device: cuda`) but then crash with "no kernel image is available for
+# execution on the device" the moment it actually runs a layer on it.
+torch==2.13.0
+torchvision==0.28.0
+
+pillow==12.3.0
+# numpy/scikit-learn/matplotlib are capped to the newest release that still
+# supports Python 3.10 (numpy 2.5+/scikit-learn 1.8+/matplotlib 3.11+ all
+# require Python 3.11+). If your venv is on Python 3.11 or newer, feel free
+# to bump these to the latest versions instead.
+numpy==2.2.6
+scikit-learn==1.7.2
+matplotlib==3.10.9
