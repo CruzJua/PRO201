@@ -12,14 +12,16 @@
 #      locally, `git add pipeline/models` + commit, THEN `docker compose
 #      build model` again to bake in the new weights.
 
-version: '3.8'
-
 services:
   backend:
-    # build: ../backend
-    # ports:
-    #   - "8000:8000"
-    image: placeholder-backend-image
+    build: ../backend
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_URL=http://model:8001
+    depends_on:
+      model:
+        condition: service_healthy
 
   model:
     build:
