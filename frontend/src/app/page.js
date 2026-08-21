@@ -1,8 +1,9 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div>
       {/* Hero Section */}
       <section className="relative py-20 px-6 sm:px-12 lg:px-20">
         <div className="max-w-4xl mx-auto text-center">
@@ -19,15 +20,15 @@ export default function Home() {
       {/* Upload Section */}
       <section className="py-16 px-6 sm:px-12 lg:px-20 bg-slate-900/50">
         <div className="max-w-2xl mx-auto">
-          <div className="border-2 border-dashed border-emerald-600/40 rounded-lg p-12 text-center hover:border-emerald-500/60 transition-colors">
+          <Link href="/upload" className="block border-2 border-dashed border-emerald-600/40 rounded-lg p-12 text-center hover:border-emerald-500/60 transition-colors hover:bg-emerald-500/5 cursor-pointer">
             <div className="mb-4">
               <svg className="w-16 h-16 mx-auto text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
               </svg>
             </div>
             <h2 className="text-2xl font-semibold mb-2">Upload MRI Image</h2>
-            <p className="text-slate-400">Drag and drop your MRI scan here or click to select</p>
-          </div>
+            <p className="text-slate-400">Click here to go to the upload page</p>
+          </Link>
         </div>
       </section>
 
@@ -94,9 +95,9 @@ export default function Home() {
       {/* CTA Section */}
       <section className="py-16 px-6 sm:px-12 lg:px-20 text-center">
         <h2 className="text-3xl font-bold mb-6">Ready to get started?</h2>
-        <button className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-8 py-3 rounded-lg transition-colors">
+        <Link href="/upload" className="inline-block bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-8 py-3 rounded-lg transition-colors">
           Upload Your MRI
-        </button>
+        </Link>
       </section>
     </div>
   );
