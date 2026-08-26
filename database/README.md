@@ -17,6 +17,17 @@ $env:SUPABASE_URL = "https://your-project.supabase.co"
 $env:SUPABASE_PUBLISHABLE_KEY = "your-publishable-key"
 ```
 
+The application should use the shared database instance and can verify the connection during startup or a health check:
+
+```python
+from database import get_database
+
+db = get_database()
+db.check_connection()  # Raises if configuration or database access is unavailable.
+```
+
+`get_database()` creates the Supabase client once per process. It does not make a network request until `check_connection()` or a repository operation is called.
+
 For trusted server-side code, you can use `$env:SUPABASE_SECRET_KEY` instead. Never expose that key to the frontend or commit it to Git. The DAL prefers the secret key when both keys are configured.
 
 ## Example
