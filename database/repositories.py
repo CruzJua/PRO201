@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Any
 
 from supabase import Client
@@ -102,6 +103,18 @@ class Database:
 
     def __init__(self, client: Client | None = None):
         supabase = client or create_supabase_client()
+        self.client = supabase
         self.users = UsersRepository(supabase)
         self.images = ImagesRepository(supabase)
         self.predictions = PredictionsRepository(supabase)
+
+    def check_connection(self) -> bool:
+        """Verify credentials and access to the application database."""
+        self.client.table("Users").select("user_id").limit(1).execute()
+        return True
+
+
+@lru_cache(maxsize=1)
+def get_database() -> Database:
+    """Return the process-wide database instance configured from the environment."""
+    return Database()
