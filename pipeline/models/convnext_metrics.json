@@ -1,0 +1,7 @@
+{
+  "best_val_accuracy": 0.9948186528497409,
+  "test_accuracy": 0.9846727423363711,
+  "epochs_trained": 6,
+  "batch_size": 32,
+  "learning_rate": 0.0001
+}

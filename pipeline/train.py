@@ -1,15 +1,24 @@
 """
-Train the brain-tumor MRI classifier.
+Train one of the brain-tumor MRI classifiers: cnn (from scratch), or vit /
+convnext (transfer-learned from ImageNet weights -- see model.py).
 
 Usage:
-    python train.py
+    python train.py                                    # trains the CNN from scratch
+    python train.py --model vit
+    python train.py --model convnext
     python train.py --epochs 20 --batch-size 64 --lr 5e-4
+
+Note: to continue training the ALREADY-TRAINED cnn_model.pt instead of
+starting over, use finetune.py instead of this script.
 
 What this script does, step by step:
     1. Load the Train/ images (with augmentation) and split off a validation
        set from them; load the Test/ images separately (untouched, unseen).
-    2. Train the CNN from model.py for a number of epochs, tracking loss and
-       accuracy on both the training and validation splits each epoch.
+       Images are resized per config.IMAGE_SIZES[args.model] -- 150x150 for
+       the CNN, 224x224 for ViT/ConvNeXt.
+    2. Build the chosen architecture from model.py (MODEL_BUILDERS) and
+       train it for a number of epochs, tracking loss and accuracy on both
+       the training and validation splits each epoch.
     3. Save the best-performing model (by validation accuracy) to disk.
     4. Plot the loss/accuracy curves so you can visually check for
        overfitting (train accuracy climbing while val accuracy plateaus).
@@ -31,15 +40,40 @@ import torch.optim as optim
 import config
 from dataset import get_dataloaders
 from evaluate import evaluate_model
-from model import SimpleCNN
+from model import MODEL_BUILDERS
+
+# vit/convnext start from ImageNet-pretrained weights (see model.py), not
+# random initialization like the CNN -- they converge in far fewer epochs
+# and need a much smaller LR, since a large LR would wreck the pretrained
+# weights before the new classifier head has a chance to adapt to them.
+# These are only used when the user doesn't pass --epochs/--lr explicitly
+# (see parse_args below), so the CNN's own defaults in config.py are
+# untouched.
+DEFAULT_EPOCHS = {"cnn": config.NUM_EPOCHS, "vit": 6, "convnext": 6}
+DEFAULT_LR = {"cnn": config.LEARNING_RATE, "vit": 1e-4, "convnext": 1e-4}
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Train the brain tumor MRI CNN.")
-    parser.add_argument("--epochs", type=int, default=config.NUM_EPOCHS)
+def parse_args(argv=None):
+    """
+    argv=None (the default) makes this fall back to sys.argv, i.e. normal
+    CLI behavior. Tests pass an explicit list instead, so they can check
+    argument parsing without needing real command-line invocation.
+    """
+    parser = argparse.ArgumentParser(description="Train one of the brain tumor MRI models.")
+    parser.add_argument("--model", choices=config.MODEL_NAMES, default="cnn")
+    # epochs/lr default to None here (rather than a fixed number) so main()
+    # can tell "user didn't pass this" apart from "user explicitly chose
+    # the same value config.py already uses" and fill in the right
+    # per-model default from DEFAULT_EPOCHS/DEFAULT_LR above.
+    parser.add_argument("--epochs", type=int, default=None)
     parser.add_argument("--batch-size", type=int, default=config.BATCH_SIZE)
-    parser.add_argument("--lr", type=float, default=config.LEARNING_RATE)
-    return parser.parse_args()
+    parser.add_argument("--lr", type=float, default=None)
+    args = parser.parse_args(argv)
+    if args.epochs is None:
+        args.epochs = DEFAULT_EPOCHS[args.model]
+    if args.lr is None:
+        args.lr = DEFAULT_LR[args.model]
+    return args
 
 
 def run_one_epoch(model, loader, criterion, optimizer, device, train: bool):
@@ -86,7 +120,7 @@ def run_one_epoch(model, loader, criterion, optimizer, device, train: bool):
     return epoch_loss, epoch_accuracy
 
 
-def plot_training_curves(history):
+def plot_training_curves(history, output_path=config.TRAINING_CURVES_PATH):
     epochs_range = range(1, len(history["train_loss"]) + 1)
 
     fig, (ax_loss, ax_acc) = plt.subplots(1, 2, figsize=(12, 5))
@@ -105,13 +139,13 @@ def plot_training_curves(history):
 
     fig.tight_layout()
     config.MODELS_DIR.mkdir(parents=True, exist_ok=True)
-    fig.savefig(config.TRAINING_CURVES_PATH)
+    fig.savefig(output_path)
     plt.close(fig)
-    print(f"Saved training curves to {config.TRAINING_CURVES_PATH}")
+    print(f"Saved training curves to {output_path}")
 
 
-def main():
-    args = parse_args()
+def main(argv=None):
+    args = parse_args(argv)
     torch.manual_seed(config.RANDOM_SEED)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -128,12 +162,25 @@ def main():
         print("  -> No CUDA GPU detected; training will run on CPU (slower). "
               "See pipeline/README.md if you expected to use a GPU here.")
 
-    train_loader, val_loader, test_loader, class_names = get_dataloaders()
+    # Every path/size below is looked up by args.model through config.py's
+    # registries (see config.py's MODEL_NAMES section) instead of branching
+    # on the model name here, so cnn/vit/convnext all flow through the same
+    # training loop.
+    model_path = config.MODEL_PATHS[args.model]
+    metrics_path = config.METRICS_PATHS[args.model]
+    curves_path = config.TRAINING_CURVES_PATHS[args.model]
+    confusion_matrix_path = config.CONFUSION_MATRIX_PATHS[args.model]
+    image_size = config.IMAGE_SIZES[args.model]
+
+    train_loader, val_loader, test_loader, class_names = get_dataloaders(
+        image_size=image_size, batch_size=args.batch_size
+    )
+    print(f"Model: {args.model} | Image size: {image_size}")
     print(f"Train batches: {len(train_loader)} | Val batches: {len(val_loader)} | "
           f"Test batches: {len(test_loader)}")
     print(f"Classes (index order): {class_names}")
 
-    model = SimpleCNN(num_classes=len(class_names)).to(device)
+    model = MODEL_BUILDERS[args.model](num_classes=len(class_names)).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
@@ -168,15 +215,17 @@ def main():
         # if accuracy happened to dip right at the end.
         if val_acc > best_val_accuracy:
             best_val_accuracy = val_acc
-            torch.save(model.state_dict(), config.MODEL_PATH)
+            torch.save(model.state_dict(), model_path)
             print(f"  -> New best model saved (val_acc={val_acc:.4f})")
 
-    plot_training_curves(history)
+    plot_training_curves(history, output_path=curves_path)
 
     # Reload the best checkpoint (not necessarily the last epoch) before the
     # final, held-out test evaluation.
-    model.load_state_dict(torch.load(config.MODEL_PATH, map_location=device))
-    test_accuracy, report, cm = evaluate_model(model, test_loader, class_names, device)
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    test_accuracy, report, cm = evaluate_model(
+        model, test_loader, class_names, device, confusion_matrix_path=confusion_matrix_path
+    )
 
     print("\nFinal test accuracy: {:.2f}%".format(test_accuracy * 100))
     print("\nClassification report:\n", report)
@@ -191,12 +240,12 @@ def main():
         "batch_size": args.batch_size,
         "learning_rate": args.lr,
     }
-    with open(config.METRICS_PATH, "w") as f:
+    with open(metrics_path, "w") as f:
         json.dump(metrics, f, indent=2)
 
-    print(f"\nSaved model weights to {config.MODEL_PATH}")
+    print(f"\nSaved model weights to {model_path}")
     print(f"Saved class names to {config.CLASS_NAMES_PATH}")
-    print(f"Saved metrics to {config.METRICS_PATH}")
+    print(f"Saved metrics to {metrics_path}")
 
 
 if __name__ == "__main__":
