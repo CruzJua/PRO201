@@ -16,3 +16,10 @@ dependencies = [
     "torchvision==0.28.0",
     "uvicorn[standard]==0.30.1",
 ]
+
+# Test-only deps, kept out of requirements.txt/the Dockerfile on purpose --
+# the running service doesn't need pytest, and the Docker image only ever
+# installs from requirements.txt (see Dockerfile), so this group never
+# bloats it. Install with `pip install -e ".[test]"` or `pip install pytest httpx`.
+[project.optional-dependencies]
+test = ["pytest", "httpx"]

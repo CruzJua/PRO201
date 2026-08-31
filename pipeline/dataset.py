@@ -36,7 +36,7 @@ def _pil_to_rgb(image):
     return image.convert("RGB")
 
 
-def build_transforms():
+def build_transforms(image_size: int = config.IMAGE_SIZE):
     """
     Returns (train_transform, eval_transform).
 
@@ -44,12 +44,16 @@ def build_transforms():
     Augmentation is only applied to the TRAINING set — never to validation or
     test data, because we want those to reflect what the model will actually
     see in production, not artificially altered versions.
+
+    image_size is a parameter (not just config.IMAGE_SIZE baked in) because
+    the CNN expects 150x150 but ViT/ConvNeXt's pretrained weights expect
+    224x224 (config.PRETRAINED_IMAGE_SIZE) -- see config.IMAGE_SIZES.
     """
     to_rgb = transforms.Lambda(_pil_to_rgb)
 
     train_transform = transforms.Compose([
         to_rgb,
-        transforms.Resize((config.IMAGE_SIZE, config.IMAGE_SIZE)),
+        transforms.Resize((image_size, image_size)),
         transforms.RandomHorizontalFlip(p=0.5),
         transforms.RandomRotation(degrees=10),
         transforms.ToTensor(),  # HWC uint8 [0,255] -> CHW float32 [0,1]
@@ -58,7 +62,7 @@ def build_transforms():
 
     eval_transform = transforms.Compose([
         to_rgb,
-        transforms.Resize((config.IMAGE_SIZE, config.IMAGE_SIZE)),
+        transforms.Resize((image_size, image_size)),
         transforms.ToTensor(),
         transforms.Normalize(mean=config.NORMALIZE_MEAN, std=config.NORMALIZE_STD),
     ])
@@ -66,7 +70,7 @@ def build_transforms():
     return train_transform, eval_transform
 
 
-def get_dataloaders():
+def get_dataloaders(image_size: int = config.IMAGE_SIZE, batch_size: int = config.BATCH_SIZE):
     """
     Builds the train / validation / test DataLoaders.
 
@@ -74,7 +78,7 @@ def get_dataloaders():
     which is exactly what pipeline/data/Train and pipeline/data/Test already
     look like -- no manual label bookkeeping required.
     """
-    train_transform, eval_transform = build_transforms()
+    train_transform, eval_transform = build_transforms(image_size=image_size)
 
     # NOTE: ImageFolder applies ONE transform to the whole dataset. We load the
     # training folder twice (once per transform) so that after we split off a
@@ -105,15 +109,15 @@ def get_dataloaders():
     test_dataset = datasets.ImageFolder(config.TEST_DIR, transform=eval_transform)
 
     train_loader = DataLoader(
-        train_dataset, batch_size=config.BATCH_SIZE, shuffle=True,
+        train_dataset, batch_size=batch_size, shuffle=True,
         num_workers=config.NUM_WORKERS, pin_memory=torch.cuda.is_available(),
     )
     val_loader = DataLoader(
-        val_dataset, batch_size=config.BATCH_SIZE, shuffle=False,
+        val_dataset, batch_size=batch_size, shuffle=False,
         num_workers=config.NUM_WORKERS, pin_memory=torch.cuda.is_available(),
     )
     test_loader = DataLoader(
-        test_dataset, batch_size=config.BATCH_SIZE, shuffle=False,
+        test_dataset, batch_size=batch_size, shuffle=False,
         num_workers=config.NUM_WORKERS, pin_memory=torch.cuda.is_available(),
     )
 

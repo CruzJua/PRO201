@@ -7,6 +7,19 @@
 # from the full dataset just to get a working image. After running
 # `python train.py`, `git add pipeline/models` and commit/push the result
 # like any other source file.
+#
+# EXCEPTION: vit_model.pt (~340MB) and convnext_model.pt (~110MB) below.
+# GitHub hard-rejects any pushed file over 100MB without Git LFS, and the
+# team decided against setting up LFS for this project -- so these two are
+# git-ignored and shared out of band (Teams) instead of committed. Everyone
+# who wants to run/build the vit or convnext routes needs to grab both
+# files from Teams and drop them into pipeline/models/ themselves; the
+# Dockerfile's `RUN test -f ...` build check will fail with a clear message
+# if they're missing, same as it always has for a missing cnn_model.pt.
+# cnn_model.pt itself stays committed -- it's small (~1.7MB) and not
+# affected by this limit.
+models/vit_model.pt
+models/convnext_model.pt
 
 # The dataset (12,000+ images) is already ignored by the root .gitignore's
 # `pipeline/data` rule -- this is a REDUNDANT, belt-and-suspenders copy of

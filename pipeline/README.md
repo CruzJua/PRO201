@@ -1,22 +1,35 @@
 # Pipeline: Brain Tumor MRI Classifier
 
-Trains a CNN on the [Brain Tumor MRI Dataset](.) (Glioma / Meningioma /
-Pituitary / No Tumor) and serves predictions over a small FastAPI service
-that the `backend` calls.
+Trains three models on the [Brain Tumor MRI Dataset](.) (Glioma /
+Meningioma / Pituitary / No Tumor) — a from-scratch CNN, and transfer-learned
+ViT-B/16 and ConvNeXt-Tiny models — and serves predictions from all three
+over a small FastAPI service that the `backend` calls.
+
+| Model      | Architecture | Trained how | Route |
+|------------|--------------|-------------|-------|
+| `cnn`      | `SimpleCNN` (model.py), 4 conv blocks | From scratch (`train.py --model cnn`); `finetune.py` continues an existing checkpoint | `POST /predict` — **the original model** |
+| `vit`      | torchvision `vit_b_16` | Transfer-learned from ImageNet weights (`train.py --model vit`) | `POST /predict/vit` |
+| `convnext` | torchvision `convnext_tiny` | Transfer-learned from ImageNet weights (`train.py --model convnext`) | `POST /predict/convnext` |
+
+The CNN is small enough to train from random weights on this ~10k-image
+dataset. ViT and ConvNeXt are not — see model.py's docstrings for why — so
+both start from ImageNet-pretrained weights and fine-tune the whole network
+(new classifier head included) at a low learning rate instead.
 
 ## Folder contents
 
 | File            | Purpose |
 |-----------------|---------|
-| `config.py`     | Every hyperparameter, path, and class-name mapping in one place. |
-| `dataset.py`    | Builds the train/val/test `DataLoader`s and image transforms. |
-| `model.py`      | The `SimpleCNN` architecture (shared by training and inference). |
-| `train.py`      | Trains the model, saves the best checkpoint, plots accuracy/loss curves. |
-| `evaluate.py`   | Scores a saved checkpoint on the test set (classification report + confusion matrix). Also used internally by `train.py`. |
-| `inference.py`  | Loads the trained model once and turns image bytes into a prediction. |
-| `api.py`        | FastAPI app exposing `/health`, `/classes`, `/predict`. |
+| `config.py`     | Every hyperparameter, path, and class-name mapping in one place, including the per-model registries (`MODEL_NAMES`, `MODEL_PATHS`, `IMAGE_SIZES`, ...) that the rest of this folder keys off of. |
+| `dataset.py`    | Builds the train/val/test `DataLoader`s and image transforms, parametrized by `image_size` (150 for the CNN, 224 for ViT/ConvNeXt). |
+| `model.py`      | All three architectures (`build_cnn` / `build_vit` / `build_convnext`) plus `MODEL_BUILDERS`, the name → builder registry shared by training and inference. |
+| `train.py`      | Trains any of the three models from scratch (`--model {cnn,vit,convnext}`), saves the best checkpoint, plots accuracy/loss curves. |
+| `finetune.py`   | Continues training the **already-trained** `cnn_model.pt` instead of starting over; only overwrites it if it actually improves on the recorded validation accuracy. |
+| `evaluate.py`   | Scores a saved checkpoint on the test set (classification report + confusion matrix). Also used internally by `train.py`/`finetune.py`. |
+| `inference.py`  | Loads a trained model once per architecture and turns image bytes into a prediction. |
+| `api.py`        | FastAPI app exposing `/health`, `/classes`, `/predict`, `/predict/vit`, `/predict/convnext`. |
 | `data/`         | Dataset (git-ignored — see root `.gitignore`). Expected layout below. |
-| `models/`       | Generated at training time: `cnn_model.pt`, `class_names.json`, `metrics.json`, and plot PNGs. Unlike `data/`, this folder **is committed to git** — see step 1 — and gets baked into the Docker image at build time — see step 3. |
+| `models/`       | Generated at training time: `{cnn,vit,convnext}_model.pt`, `class_names.json` (shared — same 4 classes for every model), and per-model metrics/plots (`metrics.json`/`training_curves.png`/`confusion_matrix.png` for the CNN, `vit_metrics.json`/`vit_training_curves.png`/... and `convnext_...` for the other two). Unlike `data/`, this folder **is committed to git** — see step 1 — and gets baked into the Docker image at build time — see step 3. |
 
 Expected dataset layout (already present under `pipeline/data/`):
 
@@ -34,47 +47,76 @@ pipeline/data/
     └── pituitary/
 ```
 
-## 1. Train the model (run on your host machine, not in Docker)
+## 1. Train the models (run on your host machine, not in Docker)
 
 The dataset is git-ignored and not baked into the Docker image, so training
-happens locally first — a GPU helps a lot here but isn't required.
+happens locally first — a GPU helps a lot here, especially for ViT/ConvNeXt.
 
 ```bash
 cd pipeline
 python -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-python train.py                  # add --epochs / --batch-size / --lr to override defaults
+
+python train.py --model cnn      # from scratch; add --epochs/--batch-size/--lr to override defaults
+python train.py --model vit      # transfer-learned from ImageNet weights (downloaded on first run)
+python train.py --model convnext
 ```
 
-This prints per-epoch train/val loss & accuracy, then a final test-set
-classification report, and writes to `pipeline/models/`:
+Already have a trained `cnn_model.pt` and just want to nudge it further
+instead of starting over?
 
-- `cnn_model.pt` — the best checkpoint by validation accuracy
-- `class_names.json` — index-to-folder-name mapping used at inference time
-- `metrics.json` — best val accuracy / final test accuracy / hyperparameters used
-- `training_curves.png` — loss & accuracy over epochs
-- `confusion_matrix.png` — per-class errors on the test set
+```bash
+python finetune.py               # add --epochs/--lr/--batch-size to override defaults (lr defaults lower than train.py's)
+```
+
+`finetune.py` only overwrites `cnn_model.pt` if an epoch actually beats the
+validation accuracy already recorded in `metrics.json` — a fine-tuning run
+that doesn't help leaves the existing checkpoint untouched rather than
+silently shipping a worse model.
+
+Each of these prints per-epoch train/val loss & accuracy, then a final
+test-set classification report, and writes to `pipeline/models/` (see the
+folder contents table above for exact filenames per model):
+
+- `<model>_model.pt` — the best checkpoint by validation accuracy
+- `class_names.json` — index-to-folder-name mapping used at inference time (shared across models)
+- metrics/training-curves/confusion-matrix files — best val accuracy / final test accuracy / hyperparameters used, loss & accuracy over epochs, per-class errors on the test set
 
 **Then commit the result:**
 
 ```bash
 git add pipeline/models
-git commit -m "Update trained model"
+git commit -m "Update trained models"
 git push
 ```
 
 This is the part that's easy to forget coming from other ML projects, where
 `models/` is usually git-ignored: here it's tracked on purpose. `pipeline/models/`
 is treated as source, not a build artifact, so that a fresh `git clone` (by a
-teammate, CI, or a deployment host) already has a working trained model in
+teammate, CI, or a deployment host) already has working trained models in
 it — nobody else needs the dataset or a GPU just to build/run the Docker
 image. See `pipeline/.gitignore` and step 3 below.
+
+**Exception: `vit_model.pt` and `convnext_model.pt` are NOT committed.** At
+~340MB and ~110MB, both are over GitHub's 100MB hard limit on pushed files
+(`cnn_model.pt` is fine — ~1.7MB), and the team decided against setting up
+Git LFS for this project. `git add pipeline/models` above still works
+without extra care — `pipeline/.gitignore` excludes exactly these two files
+— but it means those two `.pt` files are shared over Teams instead of git.
+**If you're pulling this repo fresh:** grab the current `vit_model.pt` and
+`convnext_model.pt` from the team's Teams channel and drop them into
+`pipeline/models/` yourself before running `evaluate.py`/`inference.py`/the
+API for those two models, or before `docker build`ing — `class_names.json`,
+the metrics, and the plots for all three models ARE committed as normal, so
+only the two large weight files themselves need to be fetched manually.
 
 Re-check a saved model's accuracy any time without retraining:
 
 ```bash
-python evaluate.py
+python evaluate.py                     # cnn (default)
+python evaluate.py --model vit
+python evaluate.py --model convnext
 ```
 
 ### GPU not being used?
@@ -193,19 +235,41 @@ From another container on the same compose network (e.g. how `backend`
 should call this service): `http://model:8001`, by service name. Either
 way it's 8001 — the backend owns 8000, so there's no overlap to worry about.
 
-**Missing/broken model?** Because the model is supposed to always be
-committed, `docker build` now treats a missing `cnn_model.pt` or
-`class_names.json` as a build failure (with a clear error message), not
-something the running service quietly tolerates — and if a model somehow
-got past that build check but not onto disk, the container fails fast on
-startup instead of serving broken predictions. See the "Design notes"
-section below for why.
+**Missing/broken model?** `docker build` treats a missing `cnn_model.pt`,
+`vit_model.pt`, `convnext_model.pt`, or `class_names.json` as a build
+failure (with a clear error message), not something the running service
+quietly tolerates — and if a model somehow got past that build check but
+not onto disk, the container fails fast on startup instead of serving
+broken predictions. See the "Design notes" section below for why. In
+practice this means: if you just cloned the repo and haven't yet grabbed
+`vit_model.pt`/`convnext_model.pt` from Teams (see step 1's "Exception"
+note above), `docker build` will fail with that error — that's expected,
+not a bug; go get the two files and try again.
+
+## Running tests
+
+```bash
+pip install pytest httpx   # or: pip install -e ".[test]"
+pytest
+```
+
+Covers the model registries (`config.py`), all three architectures' output
+shapes, dataset transforms, `Predictor`/`get_predictor`, `finetune.py`'s
+argument parsing and fail-fast behavior, and the API routes. A few tests are
+skipped until `vit_model.pt`/`convnext_model.pt` actually exist (see
+"Missing/broken model?" above) — they activate automatically once all three
+models have been trained.
 
 ## API reference
 
 - `GET /health` → `{"status": "ok", "model_loaded": true|false}`
 - `GET /classes` → list of `{folder_name, display_name}` for each class
-- `POST /predict` (multipart form, field name `file`, JPEG/PNG) →
+- `POST /predict` — **the original model** (the from-scratch CNN)
+- `POST /predict/vit` — the ViT-B/16 model
+- `POST /predict/convnext` — the ConvNeXt-Tiny model
+
+All three predict routes take the same request (multipart form, field name
+`file`, JPEG/PNG) and return the same response shape:
   ```json
   {
     "predicted_class": "glioma",
@@ -226,6 +290,26 @@ section below for why.
   requires re-creating the *exact* same architecture first. Importing one
   shared class from `model.py` in both `train.py` and `inference.py` means
   they can never drift apart.
+- **Why does the CNN train from scratch but ViT/ConvNeXt use pretrained
+  ImageNet weights?** With ~9-10k training images across 4 classes, that's
+  nowhere near enough data to learn a large transformer's or ConvNeXt's
+  weights from random initialization. CNNs like `SimpleCNN` get a strong
+  head start "for free" from the convolution operation itself (translation
+  equivariance — a learned edge detector works the same wherever it slides
+  in the image), which lets them generalize from a modest dataset. ViT in
+  particular has no such built-in prior — every patch attends to every
+  other patch with no assumption that nearby pixels are related — so
+  starting from ImageNet-pretrained weights instead of noise is the
+  standard, practical choice at this dataset size. See `model.py`'s
+  `build_vit`/`build_convnext` docstrings for more.
+- **Why does `MODEL_BUILDERS`/`config.MODEL_NAMES` exist instead of an
+  if/elif per script?** Five different files (`train.py`, `finetune.py`,
+  `evaluate.py`, `inference.py`, `api.py`) all need to do something
+  slightly different per architecture — build it, find its checkpoint,
+  pick its image size. Keying all of that off one shared list of names and
+  a few dicts in `config.py`/`model.py` means adding a fourth architecture
+  later is "add one entry to each dict," not "hunt down every place that
+  branches on model name."
 - **Why split validation from the Train folder instead of using Test?**
   The Test set is only touched once, at the very end, to get an honest,
   unbiased estimate of real-world accuracy. If you used it during training

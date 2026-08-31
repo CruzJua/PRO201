@@ -14,7 +14,7 @@ from PIL import Image, UnidentifiedImageError
 
 import config
 from dataset import build_transforms
-from model import SimpleCNN
+from model import MODEL_BUILDERS
 
 
 class ModelMissingError(RuntimeError):
@@ -38,39 +38,50 @@ class InvalidImageError(ValueError):
 
 class Predictor:
     """
-    Thin wrapper around the trained model that the API calls into.
+    Thin wrapper around a trained model that the API calls into.
 
-    We load the model weights ONCE (see get_predictor() below) and reuse the
-    same in-memory model for every request, instead of reloading it from disk
-    on every /predict call, which would be slow and wasteful.
+    We load the model weights ONCE per architecture (see get_predictor()
+    below) and reuse the same in-memory model for every request, instead of
+    reloading it from disk on every /predict call, which would be slow and
+    wasteful.
     """
 
-    def __init__(self):
+    def __init__(self, model_name: str = "cnn"):
+        if model_name not in config.MODEL_NAMES:
+            raise ValueError(
+                f"Unknown model_name '{model_name}'. Expected one of {config.MODEL_NAMES}."
+            )
+
+        self.model_name = model_name
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        if not config.MODEL_PATH.exists() or not config.CLASS_NAMES_PATH.exists():
+        model_path = config.MODEL_PATHS[model_name]
+        if not model_path.exists() or not config.CLASS_NAMES_PATH.exists():
             raise ModelMissingError(
-                f"Trained model not found at {config.MODEL_PATH}. "
+                f"Trained '{model_name}' model not found at {model_path}. "
                 "pipeline/models/ is committed to git and baked into the "
                 "Docker image at build time, so this should never happen in "
                 "a correctly built image or a correctly cloned repo. If "
-                "you're developing locally, run `python train.py` and "
-                "commit the result. If you're seeing this in a container, "
-                "the image was built from a checkout that was missing "
-                "pipeline/models/cnn_model.pt -- rebuild from a full clone."
+                f"you're developing locally, run `python train.py --model {model_name}` "
+                "(or `python finetune.py` for the cnn) and commit the result. "
+                "If you're seeing this in a container, the image was built "
+                f"from a checkout that was missing {model_path.name} -- "
+                "rebuild from a full clone."
             )
 
         with open(config.CLASS_NAMES_PATH) as f:
             self.class_names = json.load(f)
 
-        self.model = SimpleCNN(num_classes=len(self.class_names)).to(self.device)
-        self.model.load_state_dict(torch.load(config.MODEL_PATH, map_location=self.device))
+        self.model = MODEL_BUILDERS[model_name](num_classes=len(self.class_names), pretrained=False).to(self.device)
+        self.model.load_state_dict(torch.load(model_path, map_location=self.device))
         self.model.eval()  # disable dropout / use running batchnorm stats
 
         # Reuse the same eval-time preprocessing that was used for validation
         # and testing during training -- the model was never trained on
-        # augmented-looking inputs, so predictions must use the plain transform.
-        _, self.eval_transform = build_transforms()
+        # augmented-looking inputs, so predictions must use the plain
+        # transform, sized to whatever this architecture expects (150 for
+        # the CNN, 224 for ViT/ConvNeXt -- see config.IMAGE_SIZES).
+        _, self.eval_transform = build_transforms(image_size=config.IMAGE_SIZES[model_name])
 
     def predict(self, image_bytes: bytes) -> dict:
         try:
@@ -99,18 +110,21 @@ class Predictor:
         }
 
 
-@lru_cache(maxsize=1)
-def get_predictor() -> Predictor:
+@lru_cache(maxsize=None)
+def get_predictor(model_name: str = "cnn") -> Predictor:
     """
-    lru_cache(maxsize=1) turns this into a lazy singleton: the first call
-    builds the Predictor (loading weights from disk); every later call
-    returns that same cached instance instantly, instead of re-reading the
-    model off disk on every request.
+    lru_cache turns this into a lazy singleton PER model_name: the first
+    call for a given name builds that Predictor (loading weights from
+    disk); every later call with the same name returns that same cached
+    instance instantly, instead of re-reading the model off disk on every
+    request. maxsize=None is fine here -- model_name only ever takes the
+    handful of values in config.MODEL_NAMES, so the cache can't grow
+    unbounded.
 
-    api.py calls this once at FastAPI startup (not lazily on first request)
-    specifically so that a missing model -- raising ModelMissingError --
-    crashes the container immediately with a clear error in the logs,
-    instead of the service starting up "successfully" and only failing once
-    the first real request comes in.
+    api.py calls this once per model at FastAPI startup (not lazily on
+    first request) specifically so that a missing model -- raising
+    ModelMissingError -- crashes the container immediately with a clear
+    error in the logs, instead of the service starting up "successfully"
+    and only failing once the first real request for that model comes in.
     """
-    return Predictor()
+    return Predictor(model_name)
