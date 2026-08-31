@@ -1,6 +1,7 @@
 import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
 import "./globals.css";
+import { AuthProvider } from "@/components/AuthProvider";
+import NavBar from "@/components/NavBar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,22 +25,10 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-slate-950 text-white">
-        <header className="sticky top-0 z-50 w-full backdrop-blur-md border-b border-white/10 bg-slate-950/80">
-          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <Link href="/" className="text-xl font-bold tracking-tighter text-emerald-400">
-              NeuroScan AI
-            </Link>
-            <nav className="flex gap-6">
-              <Link href="/" className="text-sm font-medium text-slate-300 hover:text-emerald-400 transition-colors">Home</Link>
-              <Link href="/about" className="text-sm font-medium text-slate-300 hover:text-emerald-400 transition-colors">About</Link>
-              <Link href="/upload" className="text-sm font-medium text-slate-300 hover:text-emerald-400 transition-colors">Upload MRI</Link>
-              <Link href="/contact" className="text-sm font-medium text-slate-300 hover:text-emerald-400 transition-colors">Contact</Link>
-            </nav>
-          </div>
-        </header>
-        <main className="flex-1">
-          {children}
-        </main>
+        <AuthProvider>
+          <NavBar />
+          <main className="flex-1">{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );
