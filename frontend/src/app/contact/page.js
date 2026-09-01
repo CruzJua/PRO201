@@ -1,31 +1,33 @@
+"use client";
+
 export default function ContactPage() {
   return (
     <div className="py-20 px-6 sm:px-12 lg:px-20 max-w-3xl mx-auto">
-      <h1 className="text-4xl font-bold mb-4 text-emerald-400 text-center">Contact Us</h1>
-      <p className="text-slate-400 text-center mb-12 text-lg">Have questions about our API or enterprise solutions? Reach out to our team.</p>
+      <h1 className="text-4xl font-bold mb-4 font-mono text-center glitch-text" data-text="CONTACT US" style={{color: '#ff006e', textShadow: '0 0 20px #ff006e'}}>CONTACT US</h1>
+      <p className="font-mono text-center mb-12 text-lg" style={{color: '#00f0ff', textShadow: '0 0 8px #00f0ff'}}>▌ Have questions? Reach out to our team. We'll respond ASAP. ▌</p>
       
-      <div className="bg-slate-900/50 p-8 rounded-2xl border border-white/5 shadow-xl">
+      <div className="p-8 border-2" style={{borderColor: '#c700ff', background: '#000000', boxShadow: '0 0 30px #c700ff/30'}}>
         <form className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">First Name</label>
-              <input type="text" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" placeholder="John" />
+              <label className="block text-sm font-bold font-mono mb-2" style={{color: '#00ff41', textShadow: '0 0 8px #00ff41'}}>FIRST NAME</label>
+              <input type="text" className="w-full px-4 py-3 font-mono focus:outline-none" placeholder="John" style={{background: '#000000', border: '2px solid #ff006e', color: '#00ff41', textShadow: '0 0 5px #00ff41'}} onFocus={(e) => e.target.style.boxShadow = '0 0 15px #ff006e'} onBlur={(e) => e.target.style.boxShadow = 'none'} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Last Name</label>
-              <input type="text" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" placeholder="Doe" />
+              <label className="block text-sm font-bold font-mono mb-2" style={{color: '#00ff41', textShadow: '0 0 8px #00ff41'}}>LAST NAME</label>
+              <input type="text" className="w-full px-4 py-3 font-mono focus:outline-none" placeholder="Doe" style={{background: '#000000', border: '2px solid #ff006e', color: '#00ff41', textShadow: '0 0 5px #00ff41'}} onFocus={(e) => e.target.style.boxShadow = '0 0 15px #ff006e'} onBlur={(e) => e.target.style.boxShadow = 'none'} />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Email</label>
-            <input type="email" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" placeholder="john@example.com" />
+            <label className="block text-sm font-bold font-mono mb-2" style={{color: '#00ff41', textShadow: '0 0 8px #00ff41'}}>EMAIL</label>
+            <input type="email" className="w-full px-4 py-3 font-mono focus:outline-none" placeholder="you@example.com" style={{background: '#000000', border: '2px solid #ff006e', color: '#00ff41', textShadow: '0 0 5px #00ff41'}} onFocus={(e) => e.target.style.boxShadow = '0 0 15px #ff006e'} onBlur={(e) => e.target.style.boxShadow = 'none'} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Message</label>
-            <textarea rows={4} className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all" placeholder="How can we help you?"></textarea>
+            <label className="block text-sm font-bold font-mono mb-2" style={{color: '#00ff41', textShadow: '0 0 8px #00ff41'}}>MESSAGE</label>
+            <textarea rows={4} className="w-full px-4 py-3 font-mono focus:outline-none" placeholder="What's on your mind?" style={{background: '#000000', border: '2px solid #ff006e', color: '#00ff41', textShadow: '0 0 5px #00ff41'}} onFocus={(e) => e.target.style.boxShadow = '0 0 15px #ff006e'} onBlur={(e) => e.target.style.boxShadow = 'none'}></textarea>
           </div>
-          <button type="button" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-8 py-4 rounded-lg transition-all shadow-lg hover:shadow-emerald-500/25">
-            Send Message
+          <button type="button" className="w-full font-bold px-8 py-4 font-mono text-lg transition-all border-2" style={{color: '#000000', backgroundColor: '#00ff41', borderColor: '#00ff41', textShadow: '0 0 5px #00ff41', boxShadow: '0 0 15px #00ff41'}}>
+            SEND MESSAGE 
           </button>
         </form>
       </div>
