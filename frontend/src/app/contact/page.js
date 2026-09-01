@@ -4,7 +4,7 @@ export default function ContactPage() {
   return (
     <div className="py-20 px-6 sm:px-12 lg:px-20 max-w-3xl mx-auto">
       <h1 className="text-4xl font-bold mb-4 font-mono text-center glitch-text" data-text="CONTACT US" style={{color: '#ff006e', textShadow: '0 0 20px #ff006e'}}>CONTACT US</h1>
-      <p className="font-mono text-center mb-12 text-lg" style={{color: '#00f0ff', textShadow: '0 0 8px #00f0ff'}}>▌ Have questions? Reach out to our team. We'll respond ASAP. ▌</p>
+      <p className="font-mono text-center mb-12 text-lg" style={{color: '#00f0ff', textShadow: '0 0 8px #00f0ff'}}>▌ Have questions? Reach out to our team. We&apos;ll respond ASAP. ▌</p>
       
       <div className="p-8 border-2" style={{borderColor: '#c700ff', background: '#000000', boxShadow: '0 0 30px #c700ff/30'}}>
         <form className="space-y-6">
