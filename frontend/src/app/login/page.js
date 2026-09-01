@@ -29,53 +29,61 @@ export default function LoginPage() {
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-6">
       <div className="w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center mb-8 text-emerald-400">Log In</h1>
+        <h1 className="text-4xl font-bold text-center mb-8 font-mono glitch-text" data-text="[LOG IN]" style={{color: '#ff006e', textShadow: '0 0 20px #ff006e'}}>[LOG IN]</h1>
         <form
           onSubmit={handleSubmit}
-          className="bg-slate-900/50 border border-white/10 rounded-xl p-8 space-y-5"
+          className="border-2 p-8 space-y-5"
+          style={{borderColor: '#00f0ff', background: '#000000', boxShadow: '0 0 30px #00f0ff/30'}}
         >
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
-              Email
+            <label className="block text-sm font-bold font-mono mb-1.5" style={{color: '#00ff41', textShadow: '0 0 8px #00ff41'}}>
+              EMAIL ADDRESS
             </label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              className="w-full px-4 py-2.5 font-mono focus:outline-none"
               placeholder="you@example.com"
+              style={{background: '#000000', border: '2px solid #ff006e', color: '#00ff41', textShadow: '0 0 5px #00ff41'}}
+              onFocus={(e) => e.target.style.boxShadow = '0 0 15px #ff006e'}
+              onBlur={(e) => e.target.style.boxShadow = 'none'}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1.5">
-              Password
+            <label className="block text-sm font-bold font-mono mb-1.5" style={{color: '#00ff41', textShadow: '0 0 8px #00ff41'}}>
+              PASSWORD
             </label>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-slate-800 border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+              className="w-full px-4 py-2.5 font-mono focus:outline-none"
               placeholder="••••••••"
+              style={{background: '#000000', border: '2px solid #ff006e', color: '#00ff41', textShadow: '0 0 5px #00ff41'}}
+              onFocus={(e) => e.target.style.boxShadow = '0 0 15px #ff006e'}
+              onBlur={(e) => e.target.style.boxShadow = 'none'}
             />
           </div>
           {error && (
-            <p className="text-sm text-red-400 bg-red-900/20 border border-red-500/30 rounded-lg px-4 py-2.5">
-              {error}
+            <p className="text-sm font-mono px-4 py-2.5 border-2" style={{color: '#ffff00', borderColor: '#ff006e', background: '#000000', textShadow: '0 0 10px #ffff00'}}>
+              ERROR: {error}
             </p>
           )}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full font-bold py-2.5 font-mono text-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed border-2"
+            style={{color: '#000000', backgroundColor: '#00ff41', borderColor: '#00ff41', textShadow: '0 0 5px #00ff41', boxShadow: '0 0 15px #00ff41'}}
           >
-            {loading ? "Signing in…" : "Sign In"}
+            {loading ? ">>> AUTHENTICATING <<<" : ">>> LOGIN <<<"}
           </button>
-          <p className="text-center text-sm text-slate-400">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="text-emerald-400 hover:underline">
-              Sign up
+          <p className="text-center text-sm font-mono" style={{color: '#00f0ff'}}>
+            NO ACCOUNT?{" "}
+            <Link href="/signup" className="font-bold" style={{color: '#ffff00', textShadow: '0 0 8px #ffff00'}}>
+              CREATE ONE
             </Link>
           </p>
         </form>
