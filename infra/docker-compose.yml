@@ -27,12 +27,30 @@ services:
       - backend
 
   backend:
-    build: ../backend
+    # Context is the repo root so the `database` package ships with the backend.
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
     environment:
+      # --- Non-secret. Safe to commit: public endpoints and identifiers. ---
       - MODEL_URL=http://model:8001
+      - SUPABASE_URL=https://nlhpnxefxxcuiglcjrkt.supabase.co
       - SUPABASE_JWKS_URL=https://nlhpnxefxxcuiglcjrkt.supabase.co/auth/v1/.well-known/jwks.json
+      - R2_BUCKET_NAME=brain
+      # R2 public dev domain — serves the `brain` bucket from its root, so no
+      # bucket segment in the path (see _public_url in main.py).
+      - NEXT_PUBLIC_IMAGE_DOMAIN=https://pub-306a1d84c120450585c84567cbfc321c.r2.dev
+      #
+      # --- Secrets. THIS FILE IS COMMITTED TO GITHUB: never inline a value
+      # here. They are read from infra/.env, which is gitignored. `:?` makes
+      # compose refuse to start with a clear message rather than booting a
+      # half-working stack that silently drops every saved prediction.
+      - SUPABASE_SECRET_KEY=${SUPABASE_SECRET_KEY:?not set — copy infra/.env.example to infra/.env and fill it in}
+      - R2_ACCOUNT_ID=${R2_ACCOUNT_ID:?not set — copy infra/.env.example to infra/.env and fill it in}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:?not set — copy infra/.env.example to infra/.env and fill it in}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:?not set — copy infra/.env.example to infra/.env and fill it in}
     depends_on:
       model:
         condition: service_healthy

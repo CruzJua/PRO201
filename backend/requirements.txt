@@ -4,3 +4,5 @@ python-multipart
 httpx
 python-dotenv
 PyJWT[crypto]
+boto3
+supabase

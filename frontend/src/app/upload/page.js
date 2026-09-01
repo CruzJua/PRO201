@@ -161,6 +161,11 @@ export default function UploadPage() {
               ))}
             </div>
           )}
+          {result.image_url && (
+            <p className="mono-note" style={{ marginTop: "1rem", opacity: 0.6 }}>
+              Scan saved to your history.
+            </p>
+          )}
         </section>
       )}
 

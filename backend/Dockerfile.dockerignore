@@ -1,0 +1,11 @@
+# Exclusions for the backend image. The build context is the repository root
+# (see infra/docker-compose.yml), so paths here are relative to that, and
+# BuildKit picks this file up because it is named <dockerfile>.dockerignore.
+
+# Never bake secrets into an image layer — docker-compose supplies these vars
+# at runtime instead (see infra/docker-compose.yml and infra/.env).
+backend/.env
+backend/.env.*
+
+**/__pycache__
+**/*.py[cod]

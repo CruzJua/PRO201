@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/components/AuthProvider";
 
-const navItems = [["Home", "/"], ["Method", "/about"], ["Analyze", "/upload"], ["Contact", "/contact"]];
+const navItems = [["Home", "/"], ["Method", "/about"], ["Analyze", "/upload"], ["History", "/history"], ["Contact", "/contact"]];
 
 export default function NavBar() {
   const { user, loading } = useAuth();
@@ -28,12 +28,12 @@ export default function NavBar() {
           {!loading && (user ? (
             <>
               <span className="auth-identity" title={user.email}>{user.email}</span>
-              <button type="button" onClick={handleSignOut}><span>05</span>Sign out</button>
+              <button type="button" onClick={handleSignOut}><span>06</span>Sign out</button>
             </>
           ) : (
             <>
-              <Link href="/login"><span>05</span>Log in</Link>
-              <Link href="/signup" className="site-nav__accent"><span>06</span>Sign up</Link>
+              <Link href="/login"><span>06</span>Log in</Link>
+              <Link href="/signup" className="site-nav__accent"><span>07</span>Sign up</Link>
             </>
           ))}
         </nav>

@@ -41,7 +41,7 @@ db.users.create(user_id=1, name="Alex")
 db.images.create(image_id=1, url="https://example.com/scan.png")
 db.predictions.create(
     pred_id=1,
-    user_id=1,
+    user_id="3f8b1c2d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",  # Supabase auth UUID
     image_id=1,
     description="Potential tumor detected",
 )
@@ -49,13 +49,28 @@ db.predictions.create(
 predictions = db.predictions.list_with_user_and_image()
 ```
 
-`list_with_user_and_image()` returns rows shaped like:
+`Prediction.user_id` is a `text` column holding the **Supabase auth UUID** (the
+JWT `sub` claim), not a `Users.user_id`. There is no foreign key from
+`Prediction` to `Users`, so a user *name* cannot be embedded in a query.
+
+`list_with_user_and_image()` returns every prediction, shaped like:
 
 ```python
 {
     "pred_id": 1,
-    "name": "Alex",
+    "user_id": "3f8b1c2d-4e5f-6a7b-8c9d-0e1f2a3b4c5d",
     "url": "https://example.com/scan.png",
     "description": "Potential tumor detected",
+}
+```
+
+`list_by_user(user_id)` returns just one user's predictions, newest first, in
+the shape the `/history` page consumes:
+
+```python
+{
+    "pred_id": 1,
+    "label": "glioma",
+    "image_url": "https://example.com/scan.png",
 }
 ```
