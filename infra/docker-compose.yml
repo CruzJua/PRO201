@@ -32,6 +32,7 @@ services:
       - "8000:8000"
     environment:
       - MODEL_URL=http://model:8001
+      - SUPABASE_JWKS_URL=https://nlhpnxefxxcuiglcjrkt.supabase.co/auth/v1/.well-known/jwks.json
     depends_on:
       model:
         condition: service_healthy
