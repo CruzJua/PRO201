@@ -1,45 +1,40 @@
-import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata = {
-  title: "Brain Tumor Detection",
-  description: "AI-powered analysis of MRI scans",
+  title: { default: "NeuroScan — MRI Classification Research", template: "%s — NeuroScan" },
+  description: "A research prototype for rapid, AI-assisted brain MRI image classification.",
 };
+
+const navItems = [["Home", "/"], ["Method", "/about"], ["Analyze", "/upload"], ["Contact", "/contact"]];
 
 export default function RootLayout({ children }) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-slate-950 text-white">
-        <header className="sticky top-0 z-50 w-full backdrop-blur-md border-b border-white/10 bg-slate-950/80">
-          <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-            <Link href="/" className="text-xl font-bold tracking-tighter text-emerald-400">
-              NeuroScan AI
-            </Link>
-            <nav className="flex gap-6">
-              <Link href="/" className="text-sm font-medium text-slate-300 hover:text-emerald-400 transition-colors">Home</Link>
-              <Link href="/about" className="text-sm font-medium text-slate-300 hover:text-emerald-400 transition-colors">About</Link>
-              <Link href="/upload" className="text-sm font-medium text-slate-300 hover:text-emerald-400 transition-colors">Upload MRI</Link>
-              <Link href="/contact" className="text-sm font-medium text-slate-300 hover:text-emerald-400 transition-colors">Contact</Link>
+    <html lang="en">
+      <body>
+        <header className="site-header">
+          <div className="site-header__inner">
+            <Link href="/" className="wordmark" aria-label="NeuroScan home"><span>Neuro</span><span>/ Scan</span></Link>
+            <span className="header-note">Medical imaging research prototype</span>
+            <nav className="site-nav" aria-label="Primary navigation">
+              {navItems.map(([label, href], index) => (
+                <Link href={href} key={href}><span>{String(index + 1).padStart(2, "0")}</span>{label}</Link>
+              ))}
             </nav>
           </div>
         </header>
-        <main className="flex-1">
-          {children}
-        </main>
+        <main>{children}</main>
+        <footer className="site-footer">
+          <div className="site-footer__top">
+            <p className="display-small">A clearer first look at complex scans.</p>
+            <Link href="/upload" className="text-link text-link--light">Open analyzer <span aria-hidden="true">↗</span></Link>
+          </div>
+          <div className="site-footer__bottom">
+            <p>NEUROSCAN / RESEARCH BUILD</p>
+            <p>For educational use — not a medical diagnosis</p>
+            <p>© 2026</p>
+          </div>
+        </footer>
       </body>
     </html>
   );
