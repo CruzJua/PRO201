@@ -1,40 +1,32 @@
 import Link from "next/link";
 import "./globals.css";
+import { AuthProvider } from "@/components/AuthProvider";
+import NavBar from "@/components/NavBar";
 
 export const metadata = {
   title: { default: "NeuroScan — MRI Classification Research", template: "%s — NeuroScan" },
   description: "A research prototype for rapid, AI-assisted brain MRI image classification.",
 };
 
-const navItems = [["Home", "/"], ["Method", "/about"], ["Analyze", "/upload"], ["Contact", "/contact"]];
-
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <header className="site-header">
-          <div className="site-header__inner">
-            <Link href="/" className="wordmark" aria-label="NeuroScan home"><span>Neuro</span><span>/ Scan</span></Link>
-            <span className="header-note">Medical imaging research prototype</span>
-            <nav className="site-nav" aria-label="Primary navigation">
-              {navItems.map(([label, href], index) => (
-                <Link href={href} key={href}><span>{String(index + 1).padStart(2, "0")}</span>{label}</Link>
-              ))}
-            </nav>
-          </div>
-        </header>
-        <main>{children}</main>
-        <footer className="site-footer">
-          <div className="site-footer__top">
-            <p className="display-small">A clearer first look at complex scans.</p>
-            <Link href="/upload" className="text-link text-link--light">Open analyzer <span aria-hidden="true">↗</span></Link>
-          </div>
-          <div className="site-footer__bottom">
-            <p>NEUROSCAN / RESEARCH BUILD</p>
-            <p>For educational use — not a medical diagnosis</p>
-            <p>© 2026</p>
-          </div>
-        </footer>
+        <AuthProvider>
+          <NavBar />
+          <main>{children}</main>
+          <footer className="site-footer">
+            <div className="site-footer__top">
+              <p className="display-small">A clearer first look at complex scans.</p>
+              <Link href="/upload" className="text-link text-link--light">Open analyzer <span aria-hidden="true">↗</span></Link>
+            </div>
+            <div className="site-footer__bottom">
+              <p>NEUROSCAN / RESEARCH BUILD</p>
+              <p>For educational use — not a medical diagnosis</p>
+              <p>© 2026</p>
+            </div>
+          </footer>
+        </AuthProvider>
       </body>
     </html>
   );

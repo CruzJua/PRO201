@@ -7,6 +7,14 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# NEXT_PUBLIC_* vars must be present at build time (next build bakes them in).
+# Pass them as build args from docker-compose so they're available here.
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
+
 RUN npm run build
 
 FROM node:20-alpine AS runner
@@ -23,12 +31,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
-# Next.js's standalone server.js passes this straight to Node's
-# server.listen(port, hostname) -- it needs a bare hostname, not a URL.
-# "0.0.0.0" binds on all interfaces inside the container, which is required
-# for the port mapping in infra/docker-compose.yml to reach it; "http://localhost"
-# here made Node's DNS lookup fail immediately (ENOTFOUND) since a URL with
-# a scheme isn't a valid hostname.
 ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "server.js"]

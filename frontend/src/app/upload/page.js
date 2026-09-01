@@ -1,16 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
 
 const displayLabels = { glioma: "Glioma", meningioma: "Meningioma", notumor: "No tumor", pituitary: "Pituitary" };
 
 export default function UploadPage() {
+  const { user, session, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!authLoading && !user) router.replace("/login");
+  }, [authLoading, user, router]);
 
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
 
@@ -25,7 +33,10 @@ export default function UploadPage() {
     setError(null);
   };
 
-  const handleDrop = (event) => { event.preventDefault(); selectFile(event.dataTransfer.files[0]); };
+  const handleDrop = (event) => {
+    event.preventDefault();
+    selectFile(event.dataTransfer.files[0]);
+  };
 
   const clearFile = () => {
     setPreview(null);
@@ -36,15 +47,19 @@ export default function UploadPage() {
   };
 
   const handleUpload = async () => {
-    if (!file) return;
-    setLoading(true);
+    if (!file || !session?.access_token) return;
+    setUploading(true);
     setError(null);
     setResult(null);
     const formData = new FormData();
     formData.append("file", file);
 
     try {
-      const response = await fetch("http://localhost:8000/predict", { method: "POST", body: formData });
+      const response = await fetch("http://localhost:8000/predict", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: formData,
+      });
       if (!response.ok) {
         let message = `Analysis failed with status ${response.status}`;
         try {
@@ -59,9 +74,18 @@ export default function UploadPage() {
     } catch (uploadError) {
       setError(uploadError.message || "The scan could not be analyzed.");
     } finally {
-      setLoading(false);
+      setUploading(false);
     }
   };
+
+  if (authLoading || !user) {
+    return (
+      <section className="auth-loading shell" aria-live="polite">
+        <p className="eyebrow">Secure analyzer</p>
+        <p className="display display-medium">Checking access…</p>
+      </section>
+    );
+  }
 
   return (
     <>
@@ -72,7 +96,7 @@ export default function UploadPage() {
         </div>
         <div className="analyzer-header__note">
           <p>Use a clear, cropped brain MRI image. The current model accepts common image formats.</p>
-          <p className="mono-note">JPG / PNG · MAX 50 MB · 4-CLASS OUTPUT</p>
+          <p className="mono-note">JPG / PNG · MAX 50 MB · AUTHENTICATED</p>
         </div>
       </section>
 
@@ -94,8 +118,8 @@ export default function UploadPage() {
               <div className="scan-preview__meta">
                 <div><span>Selected image</span><p>{file?.name}</p></div>
                 <div className="scan-preview__actions">
-                  <button type="button" onClick={clearFile} className="button button--quiet" disabled={loading}>Remove</button>
-                  <button type="button" onClick={handleUpload} className="button button--primary" disabled={loading}>{loading ? "Analyzing…" : "Run analysis"} <span aria-hidden="true">↗</span></button>
+                  <button type="button" onClick={clearFile} className="button button--quiet" disabled={uploading}>Remove</button>
+                  <button type="button" onClick={handleUpload} className="button button--primary" disabled={uploading}>{uploading ? "Analyzing…" : "Run analysis"} <span aria-hidden="true">↗</span></button>
                 </div>
               </div>
             </div>
@@ -110,7 +134,7 @@ export default function UploadPage() {
             <li><span>02</span>Use one axial brain MRI image at a time.</li>
             <li><span>03</span>Treat the result as a research signal only.</li>
           </ol>
-          <p className="research-warning">Not for clinical decision-making or emergency use.</p>
+          <p className="research-warning">Signed in as {user.email}</p>
         </aside>
       </section>
 
