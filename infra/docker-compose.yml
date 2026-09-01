@@ -1,4 +1,4 @@
-# TODO: Add the remaining frontend/database configuration here.
+# TODO: Add the remaining database configuration here.
 # The `model` service below serves the trained CNN from pipeline/ over
 # FastAPI, on port 8001.
 #
@@ -14,7 +14,11 @@
 
 services:
   frontend:
-    build: ../frontend
+    build:
+      context: ../frontend
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: https://nlhpnxefxxcuiglcjrkt.supabase.co
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_1jfrtErG_F-Hsa-2hGkuNg_F3EeW7Hv
     ports:
       - "3000:3000"
     environment:

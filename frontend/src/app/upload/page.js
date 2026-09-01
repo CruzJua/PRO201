@@ -1,36 +1,43 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function UploadPage() {
+  const { user, session, loading } = useAuth();
+  const router = useRouter();
+
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/login");
+    }
+  }, [loading, user, router]);
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
       setFile(selectedFile);
-      const objectUrl = URL.createObjectURL(selectedFile);
-      setPreview(objectUrl);
+      setPreview(URL.createObjectURL(selectedFile));
       setResult(null);
       setError(null);
     }
   };
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
+  const handleDragOver = (e) => e.preventDefault();
 
   const handleDrop = (e) => {
     e.preventDefault();
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile && droppedFile.type.startsWith("image/")) {
       setFile(droppedFile);
-      const objectUrl = URL.createObjectURL(droppedFile);
-      setPreview(objectUrl);
+      setPreview(URL.createObjectURL(droppedFile));
       setResult(null);
       setError(null);
     } else {
@@ -41,7 +48,7 @@ export default function UploadPage() {
   const handleUpload = async () => {
     if (!file) return;
 
-    setLoading(true);
+    setUploading(true);
     setError(null);
     setResult(null);
 
@@ -49,9 +56,11 @@ export default function UploadPage() {
     formData.append("file", file);
 
     try {
-      // Send to the FastAPI backend running on port 8000
       const response = await fetch("http://localhost:8000/predict", {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
         body: formData,
       });
 
@@ -60,27 +69,42 @@ export default function UploadPage() {
         try {
           const errorData = await response.json();
           if (errorData?.detail) errorMsg = errorData.detail;
-        } catch (e) {
-          // ignore parsing error
+        } catch (_) {
+          // ignore parse error
         }
         throw new Error(errorMsg);
       }
 
-      const data = await response.json();
-      setResult(data);
+      setResult(await response.json());
     } catch (err) {
       console.error("Upload error:", err);
       setError(err.message || "An error occurred during upload.");
     } finally {
-      setLoading(false);
+      setUploading(false);
     }
   };
+
+  if (loading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+        <svg
+          className="animate-spin h-8 w-8 text-emerald-500"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+        </svg>
+      </div>
+    );
+  }
 
   return (
     <div className="py-20 px-6 sm:px-12 lg:px-20 max-w-4xl mx-auto">
       <h1 className="text-4xl font-bold mb-8 text-emerald-400 text-center">Upload MRI Scan</h1>
-      
-      <div 
+
+      <div
         className="border-2 border-dashed border-emerald-600/40 rounded-xl p-8 sm:p-16 text-center bg-slate-900/50 backdrop-blur-sm transition-all hover:border-emerald-500/60"
         onDragOver={handleDragOver}
         onDrop={handleDrop}
@@ -91,8 +115,8 @@ export default function UploadPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
             <h2 className="text-2xl font-semibold mb-4 text-white">Select a file or drag and drop here</h2>
-            <p className="text-slate-400 mb-8">JPG, PNG, DICOM file size no more than 50MB</p>
-            <button 
+            <p className="text-slate-400 mb-8">JPG, PNG file size no more than 50MB</p>
+            <button
               onClick={() => fileInputRef.current?.click()}
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-8 py-3 rounded-lg transition-all shadow-lg hover:shadow-emerald-500/25"
             >
@@ -104,22 +128,22 @@ export default function UploadPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={preview} alt="MRI Preview" className="max-h-64 rounded-lg shadow-xl mb-6 border border-slate-700" />
             <div className="flex gap-4">
-              <button 
+              <button
                 onClick={() => { setPreview(null); setFile(null); setResult(null); setError(null); }}
+                disabled={uploading}
                 className="bg-slate-700 hover:bg-slate-600 text-white font-semibold px-6 py-2 rounded-lg transition-all"
-                disabled={loading}
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleUpload}
-                disabled={loading}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-8 py-2 rounded-lg transition-all shadow-lg hover:shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[120px]"
+                disabled={uploading}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-8 py-2 rounded-lg transition-all shadow-lg hover:shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[140px]"
               >
-                {loading ? (
+                {uploading ? (
                   <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
                 ) : (
                   "Analyze Image"
@@ -128,12 +152,12 @@ export default function UploadPage() {
             </div>
           </div>
         )}
-        <input 
-          type="file" 
-          ref={fileInputRef} 
-          onChange={handleFileChange} 
-          accept="image/*" 
-          className="hidden" 
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileChange}
+          accept="image/*"
+          className="hidden"
         />
       </div>
 
@@ -156,7 +180,6 @@ export default function UploadPage() {
               <p className="text-xl font-semibold text-white">{(result.confidence * 100).toFixed(2)}%</p>
             </div>
           </div>
-          
           {result.probabilities && (
             <div className="mt-6 bg-slate-950 p-4 rounded-lg border border-white/5">
               <p className="text-sm text-slate-400 mb-3">Class Probabilities</p>
@@ -168,7 +191,10 @@ export default function UploadPage() {
                       <span className="text-slate-300">{(value * 100).toFixed(1)}%</span>
                     </div>
                     <div className="w-full bg-slate-800 rounded-full h-1.5">
-                      <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${value * 100}%` }}></div>
+                      <div
+                        className="bg-emerald-500 h-1.5 rounded-full"
+                        style={{ width: `${value * 100}%` }}
+                      />
                     </div>
                   </div>
                 ))}
